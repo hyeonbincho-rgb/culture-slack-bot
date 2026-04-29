@@ -59,27 +59,47 @@ def send_lookup_result(biz_no: str, response_url: str):
 
 
 def lookup_culture_biz(biz_no: str):
+    session = requests.Session()
+
+    base_page = "https://www.culture.go.kr/deduction/product/bznmk/list"
+
+    headers = {
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+        "Connection": "close",
+        "Referer": "https://www.culture.go.kr/deduction/product/bznmk/list",
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/147.0.0.0 Safari/537.36"
+        ),
+    }
+
     params = {
         "pageNo": "1",
         "numOfRows": "24",
         "keyword": biz_no,
-        "sortType": "NEW"
-    }
-
-    headers = {
-        "Accept": "application/json, text/plain, */*",
-        "Referer": "https://www.culture.go.kr/deduction/product/bznmk/list",
-        "User-Agent": "Mozilla/5.0"
+        "sortType": "NEW",
     }
 
     try:
-        r = requests.get(CULTURE_URL, params=params, headers=headers, timeout=10)
+        # 1) 먼저 목록 페이지 접속해서 세션/쿠키 생성
+        session.get(base_page, headers=headers, timeout=10)
+
+        # 2) 실제 조회 API 호출
+        r = session.get(
+            base_page,
+            params=params,
+            headers=headers,
+            timeout=15,
+        )
+
         body = r.text
+        formatted = format_biz_no(biz_no)
 
         if r.status_code != 200:
             return {"status": f"확인불가 / HTTP {r.status_code}"}
-
-        formatted = format_biz_no(biz_no)
 
         if biz_no in body or formatted in body:
             name = extract_name(body)
@@ -88,7 +108,7 @@ def lookup_culture_biz(biz_no: str):
         return {"status": "등록 N"}
 
     except Exception as e:
-        return {"status": f"확인불가 / {str(e)[:80]}"}
+        return {"status": f"확인불가 / {str(e)[:120]}"}
 
 
 def extract_name(body: str):
